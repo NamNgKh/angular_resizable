@@ -9,27 +9,25 @@ export class EdgeResizeHandler implements OnInit, OnDestroy {
 	onMouseOver: (event: MouseEvent) => void;
 	onMouseUp: (event: MouseEvent) => void;
 	onMouseMove: (event: MouseEvent) => void;
-	protected subs: Subscription[];
-	protected drag = false;
+	protected subs: Subscription[] = [];
+	drag = false;
 	protected x: number;
 	protected y: number;
+	protected delta = 3;
 
 	constructor(
 		protected component: ResizableDirective,
 		protected mouseDown: Subject<MouseEvent>,
 		protected mouseMove: Subject<MouseEvent>,
-		protected mouseUp: Subject<MouseEvent>,
-		protected mouseOver: Subject<MouseEvent>
-	) { }
+		protected mouseUp: Subject<MouseEvent>
+	) {
+		this.subs.push(this.mouseDown.subscribe(event => this.onMouseDown(event)));
+		this.subs.push(this.mouseMove.subscribe(event => this.onMouseMove(event)));
+		this.subs.push(this.mouseUp.subscribe(event => this.onMouseUp(event)));
+	}
 
 	ngOnInit() {
-		this.subs.push(this.mouseDown.subscribe(event => this.onMouseDown(event)));
-		this.subs.push(this.mouseMove.subscribe(event => {
-			if (this.resizable(event))
-				this.onMouseOver(event);
-		}));
-		this.subs.push(this.mouseUp.subscribe(event => this.onMouseUp(event)));
-		this.subs.push(this.mouseOver.subscribe(event => this.onMouseOver(event)));
+
 	}
 
 	ngOnDestroy() {
@@ -40,7 +38,7 @@ export class EdgeResizeHandler implements OnInit, OnDestroy {
 export class NEdgeReszieHandler extends EdgeResizeHandler {
 	resizable = (event: MouseEvent): boolean => {
 		let rect = this.component.getClientRect();
-		if (rect.top == event.clientY
+		if (Math.abs(event.clientY - rect.top) <= this.delta
 			&& rect.left <= event.clientX
 			&& event.clientX <= rect.left + rect.width) {
 			return true;
@@ -48,20 +46,54 @@ export class NEdgeReszieHandler extends EdgeResizeHandler {
 		return false;
 	}
 
-	onMouseOver = (event: MouseEvent) => {
+	onMouseMove = (event: MouseEvent) => {
 		if (this.resizable(event)) {
-			this.component.cursor = "ne-resize";
+			this.component.cursor = "ns-resize";
 		}
 		else {
 			this.component.cursor = "default";
 		}
-	}
-
-	onMouseMove = (event: MouseEvent) => {
-		if(this.drag){
+		if (this.drag) {
 			this.component.width += event.clientX - this.x;
 			this.component.height += event.clientY - this.y;
 			this.x = event.clientX;
+			this.y = event.clientY;
+		}
+	}
+
+	onMouseDown = (event: MouseEvent) => {
+		if (this.resizable(event)) {
+			this.drag = true;
+			this.x = event.clientX;
+			this.y = event.clientY;
+		}
+	}
+
+	onMouseUp = (event: MouseEvent) => {
+		this.drag = false;
+	}
+}
+
+export class SEdgeReszieHandler extends EdgeResizeHandler {
+	resizable = (event: MouseEvent): boolean => {
+		let rect = this.component.getClientRect();
+		if (Math.abs(event.layerY - rect.top - rect.height) <= this.delta
+			&& rect.left <= event.layerX
+			&& event.layerX <= rect.left + rect.width) {
+			return true;
+		}
+		return false;
+	}
+
+	onMouseMove = (event: MouseEvent) => {
+		if (this.resizable(event)) {
+			this.component.cursor = "ns-resize";
+		}
+		else {
+			this.component.cursor = "default";
+		}
+		if (this.drag) {
+			this.component.height += event.clientY - this.y;
 			this.y = event.clientY;
 		}
 	}
